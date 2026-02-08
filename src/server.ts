@@ -13,17 +13,15 @@ import {
   createUIMessageStreamResponse,
   type ToolSet
 } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { createOpenAI } from "@ai-sdk/openai";
 import { processToolCalls, cleanupMessages } from "./utils";
 import { tools, executions } from "./tools";
-// import { env } from "cloudflare:workers";
 
-const model = openai("gpt-4o-2024-11-20");
-// Cloudflare AI Gateway
-// const openai = createOpenAI({
-//   apiKey: env.OPENAI_API_KEY,
-//   baseURL: env.GATEWAY_BASE_URL,
-// });
+const openai = createOpenAI({
+  baseURL: process.env.OPENAI_BASE_URL,
+});
+
+const model = openai("openai/gpt-5-mini");
 
 /**
  * Chat Agent implementation that handles real-time AI chat interactions
@@ -40,10 +38,16 @@ export class Chat extends AIChatAgent<Env> {
     //   "https://path-to-mcp-server/sse"
     // );
 
-    // Collect all tools, including MCP tools
+    let mcpTools = {};
+    try {
+      mcpTools = this.mcp.getAITools();
+    } catch {
+      // MCP not connected, skip MCP tools
+    }
+
     const allTools = {
       ...tools,
-      ...this.mcp.getAITools()
+      ...mcpTools,
     };
 
     const stream = createUIMessageStream({
